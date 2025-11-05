@@ -168,7 +168,7 @@ Aucun code pour l’instant.
     }
 
     async function callGenerate(body) {
-      const res = await fetch('/api/generate-svg', {
+      const res = await fetch('/apia/generate-svg', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
@@ -304,11 +304,11 @@ Aucun code pour l’instant.
         let endpoint, body;
         if (currentId) {
           // ➜ EDIT de la lunette existante
-          endpoint = '/api/lunettes/update';
+          endpoint = '/apia/lunettes/update';
           body = { id: currentId, cod_svg: svg, name: 'SVG IA ' + new Date().toLocaleString() };
         } else {
           // ➜ CRÉATION d'une nouvelle
-          endpoint = '/api/save-svg';
+          endpoint = '/apia/save-svg';
           body = { name: 'SVG IA ' + new Date().toLocaleString(), cod_svg: svg, chat_history: messages };
         }
 

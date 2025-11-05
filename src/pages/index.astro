@@ -106,7 +106,7 @@ const startOnSignup = params.get("signup") === "1";
         const msg = document.getElementById("login-msg");
         msg.textContent = "Connexion...";
         try {
-          const res = await fetch("/api/login", {
+          const res = await fetch("/apia/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email: f.email.value.trim(), password: f.password.value })
@@ -127,7 +127,7 @@ const startOnSignup = params.get("signup") === "1";
         const msg = document.getElementById("signup-msg");
         msg.textContent = "Création du compte...";
         try {
-          const res = await fetch("/api/signup", {
+          const res = await fetch("/apia/signup", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
