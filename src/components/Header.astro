@@ -1,0 +1,47 @@
+---
+const { active = "" } = Astro.props;
+---
+<header class="border-b border-neutral-200 bg-white">
+  <div class="max-w-[1280px] mx-auto flex items-center justify-between px-10 h-[72px]">
+    <!-- Logo (connecté -> /accueil) -->
+    <a href="/accueil" class="flex items-center gap-3">
+      <img src="/assets/brand/logo-dark.svg" alt="TaVue" class="h-[38px] w-auto" />
+    </a>
+
+    <!-- Nav -->
+    <nav class="flex items-center gap-10 text-[15px]">
+      <a href="/configurateur"
+        class={`pb-1 ${active === "configurateur" ? "border-b-2 border-neutral-900 font-medium" : "text-neutral-600 hover:text-neutral-900"}`}>
+        Configurateur
+      </a>
+      <a href="/mes-lunettes"
+        class={`pb-1 ${active === "creations" ? "border-b-2 border-neutral-900 font-medium" : "text-neutral-600 hover:text-neutral-900"}`}>
+        Mes créations
+      </a>
+    </nav>
+
+    <!-- Actions -->
+    <div class="flex items-center gap-3">
+      <a href="/configurateur/ia"
+        class="px-5 py-2.5 bg-neutral-900 text-white rounded-md text-[14px] hover:bg-neutral-800 transition">
+        Créer avec l’IA
+      </a>
+      <!-- Déconnexion (si tu as /api/logout) -->
+      <button id="logout-btn"
+        class="px-5 py-2.5 border border-neutral-300 rounded-md text-[14px] hover:bg-neutral-100 transition">
+        Me déconnecter
+      </button>
+    </div>
+  </div>
+</header>
+
+<script is:inline>
+  // Déconnexion si l'endpoint existe
+  const btn = document.getElementById('logout-btn');
+  if (btn) {
+    btn.addEventListener('click', async () => {
+      await fetch('/api/logout', { method: 'POST' }).catch(()=>{});
+      location.href = '/';
+    });
+  }
+</script>

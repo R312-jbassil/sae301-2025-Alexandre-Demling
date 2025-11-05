@@ -1,0 +1,258 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+export const prerender = false;
+
+// Accès réservé
+const user = Astro.locals.user;
+if (!user) {
+  throw Astro.redirect("/?redirect=/configurateur/ia");
+}
+
+const id = Astro.url.searchParams.get("id");
+---
+
+<BaseLayout title="TaVue — IA" active="configurateur">
+  <main class="max-w-7xl mx-auto px-6 py-8">
+    <div class="mb-6">
+      <p class="uppercase tracking-widest text-xs opacity-60">Configuration IA</p>
+      <h1 class="text-3xl md:text-4xl font-extrabold">Chat avec l'Intelligence Artificielle</h1>
+      <p class="opacity-70 mt-1">
+        Décrivez vos lunettes idéales et notre IA génèrera/modifiera le code SVG.
+        {id ? <span class="ml-1 opacity-80">(modification de <code>{id}</code>)</span> : null}
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <!-- Colonne gauche : Chat + Code brut -->
+      <section class="lg:col-span-7">
+        <div class="card bg-base-100 shadow-sm">
+          <div class="card-body">
+            <!-- Chat -->
+            <div id="chat" class="space-y-3 min-h-[360px] overflow-y-auto pr-1">
+              <div class="flex items-start gap-3">
+                <div class="avatar placeholder">
+                  <div class="bg-neutral text-neutral-content rounded-full w-8">IA</div>
+                </div>
+                <div class="bg-base-200 rounded-2xl px-3 py-2 text-sm max-w-[85%]">
+                  Bonjour ! Décrivez-moi les lunettes que vous souhaitez créer.
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-4 flex gap-2">
+              <textarea id="prompt" class="textarea textarea-bordered flex-1 resize-none" rows="2"
+                placeholder="Ex : monture légère en acétate, branches métal, style rétro, couleur écaille..."></textarea>
+              <button id="send" class="btn btn-neutral shrink-0 flex items-center gap-2">
+                <svg id="spin-main" class="w-4 h-4 hidden animate-spin" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4A4 4 0 008 12H4z"/></svg>
+                <span>Lancer l’IA</span>
+              </button>
+            </div>
+
+            <!-- Code SVG brut (non exécuté) -->
+            <div class="mt-6">
+              <h3 class="font-semibold mb-2 text-sm opacity-80">Code SVG généré (texte)</h3>
+              <pre id="svg-code" class="bg-base-200 rounded-xl p-3 text-xs overflow-auto max-h-56 select-all">
+Aucun code pour l’instant.
+              </pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Colonne droite : Aperçu SVG + actions -->
+      <section class="lg:col-span-5">
+        <div class="card bg-base-100 shadow-sm">
+          <div class="card-body">
+            <h3 class="card-title text-base">Aperçu SVG Généré</h3>
+            <div
+              id="preview"
+              class="rounded-xl bg-base-200/70 flex items-center justify-center min-h-[360px] p-4 text-sm opacity-70"
+            >
+              Aucun SVG généré
+            </div>
+
+            <!-- Bloc édition IA -->
+            <div class="mt-4">
+              <div class="flex items-center justify-between">
+                <label for="edit-instr" class="label-text font-medium">Éditer avec l’IA</label>
+                <small class="opacity-60">Modifie le SVG courant via une instruction</small>
+              </div>
+              <div class="flex gap-2 mt-2">
+                <input id="edit-instr" type="text" class="input input-bordered w-full"
+                  placeholder="Ex : Passe la monture en noir et augmente les verres à 52mm" />
+                <button id="btn-edit-ai" class="btn btn-ghost border flex items-center gap-2">
+                  <svg id="spin-edit" class="w-4 h-4 hidden animate-spin" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4A4 4 0 008 12H4z"/></svg>
+                  <span>Appliquer</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="mt-4 flex gap-3">
+              <button id="btn-save" class="btn btn-primary" disabled>Sauvegarder</button>
+              <a class="btn" href="/configurateur">Éditer dans le configurateur</a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script is:inline>
+    // --- État & helpers ---
+    const chatEl = document.getElementById('chat');
+    const promptEl = document.getElementById('prompt');
+    const sendBtn = document.getElementById('send');
+    const spinMain = document.getElementById('spin-main');
+
+    const preview = document.getElementById('preview');
+    const saveBtn = document.getElementById('btn-save');
+    const codeEl = document.getElementById('svg-code');
+
+    const editInput = document.getElementById('edit-instr');
+    const editBtn = document.getElementById('btn-edit-ai');
+    const spinEdit = document.getElementById('spin-edit');
+
+    const messages = [
+      { role: "assistant", content: "Bonjour ! Décrivez-moi les lunettes que vous souhaitez créer." }
+    ];
+
+    function addBubble(role, content) {
+      const wrap = document.createElement('div');
+      wrap.className = 'flex items-start gap-3 ' + (role === 'user' ? 'justify-end' : '');
+      const bubble = document.createElement('div');
+      bubble.className = 'rounded-2xl px-3 py-2 text-sm max-w-[85%] ' +
+        (role === 'user' ? 'bg-neutral text-neutral-content' : 'bg-base-200');
+      bubble.textContent = content;
+      if (role === 'user') {
+        wrap.appendChild(bubble);
+      } else {
+        const av = document.createElement('div');
+        av.className = 'avatar placeholder';
+        av.innerHTML = '<div class="bg-neutral text-neutral-content rounded-full w-8">IA</div>';
+        wrap.appendChild(av);
+        wrap.appendChild(bubble);
+      }
+      chatEl.appendChild(wrap);
+      chatEl.scrollTop = chatEl.scrollHeight;
+    }
+
+    const escapeHtml = (s) =>
+      String(s || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+
+    async function callGenerate(body) {
+      const res = await fetch('/api/generate-svg', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Generation failed');
+      return data;
+    }
+
+    function applyResult(data) {
+      messages.push({ role: 'assistant', content: data.fullResponse || '' });
+      addBubble('assistant', 'Proposition générée. Aperçu à droite et code ci-dessous.');
+
+      // Preview exécutable
+      if (data.svg) {
+        preview.classList.remove('opacity-70');
+        preview.innerHTML = data.svg;
+        preview.dataset.svg = data.svg;
+        saveBtn.disabled = false;
+      } else {
+        preview.innerHTML = '<span class="opacity-60">La réponse ne contenait pas de SVG valide.</span>';
+        saveBtn.disabled = true;
+      }
+      // Code brut
+      const codeText = data.svg || (data.fullResponse || '');
+      codeEl.innerHTML = codeText ? escapeHtml(codeText) : "Aucun code pour l’instant.";
+    }
+
+    // --- Génération initiale ---
+    sendBtn.addEventListener('click', async () => {
+      const text = promptEl.value.trim();
+      if (!text) return;
+      promptEl.value = '';
+      addBubble('user', text);
+      messages.push({ role: 'user', content: text });
+
+      sendBtn.disabled = true; spinMain.classList.remove('hidden');
+
+      try {
+        const data = await callGenerate({ prompt: text });
+        applyResult(data);
+      } catch (err) {
+        console.error(err);
+        addBubble('assistant', "Désolé, je n'ai pas réussi à générer le SVG (" + err.message + ").");
+      } finally {
+        sendBtn.disabled = false; spinMain.classList.add('hidden');
+      }
+    });
+
+    // --- Édition avec l'IA (modifie le SVG courant selon une instruction) ---
+    editBtn.addEventListener('click', async () => {
+      const instr = editInput.value.trim();
+      const currentSvg = preview.dataset.svg || "";
+      if (!instr) return alert("Écris une instruction d’édition.");
+      if (!currentSvg) return alert("Génère d’abord un SVG.");
+
+      // Message utilisateur + contexte SVG
+      const editPrompt =
+        "Here is the current SVG to modify:\n" +
+        currentSvg +
+        "\n\nInstruction: " + instr +
+        "\nReturn a single COMPLETE <svg>...</svg> only (no markdown, no comments).";
+
+      addBubble('user', "Édite : " + instr);
+      messages.push({ role: 'user', content: editPrompt });
+
+      editBtn.disabled = true; spinEdit.classList.remove('hidden');
+
+      try {
+        const data = await callGenerate({ messages: messages.filter(m => m.role !== 'assistant' || m.content.trim()) });
+        applyResult(data);
+      } catch (err) {
+        console.error(err);
+        addBubble('assistant', "Impossible de modifier le SVG (" + err.message + ").");
+      } finally {
+        editBtn.disabled = false; spinEdit.classList.add('hidden');
+      }
+    });
+
+    // --- Sauvegarde PB ---
+    saveBtn.addEventListener('click', async () => {
+      const svg = preview.dataset.svg;
+      if (!svg) return;
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Sauvegarde...';
+
+      try {
+        const res = await fetch('/api/save-svg', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            name: 'SVG IA ' + new Date().toLocaleString(),
+            code_svg: svg,
+            chat_history: messages
+          })
+        });
+        const out = await res.json();
+        if (!res.ok || !out.success) throw new Error(out.error || 'Save failed');
+
+        alert('SVG sauvegardé ✅ (id: ' + (out.data?.id || '—') + ')');
+        saveBtn.textContent = 'Sauvegardé ✓';
+      } catch (e) {
+        console.error(e);
+        alert('Échec de la sauvegarde.');
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Sauvegarder';
+      }
+    });
+  </script>
+</BaseLayout>

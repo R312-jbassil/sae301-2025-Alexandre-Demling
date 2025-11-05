@@ -1,0 +1,106 @@
+---
+import { baseSvg } from "../lib/svgTemplates";
+
+let state = {
+  frameMaterial: "acetate",
+  frameColor: "#111111",
+  armMaterial: "acetate",
+  armColor: "#B56A2D",
+  bridge: 18,
+  lens: 50,
+};
+
+let svg = baseSvg({ frame: state.frameColor, arms: state.armColor });
+
+async function updatePreview() {
+  svg = baseSvg({ frame: state.frameColor, arms: state.armColor });
+}
+
+async function createWithAI() {
+  const instruction = prompt("Décrivez vos lunettes (matériau, couleurs, pont, verres)…");
+  if (!instruction) return;
+
+  const res = await fetch("/api/generate-svg", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      baseSvg: svg,
+      instruction
+    }),
+  });
+  const data = await res.json();
+  if (data?.svg) svg = data.svg;
+}
+---
+<div class="grid lg:grid-cols-[1.4fr,1fr] gap-8">
+  <!-- Aperçu produit -->
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <div class="w-full aspect-[3/2] bg-white rounded flex items-center justify-center">
+        <div class="max-w-full" set:html={svg}></div>
+      </div>
+      <div class="flex gap-3">
+        <button class="btn">Enregistrer</button>
+        <button class="btn btn-primary">Commander · 189€</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panneau options -->
+  <div class="grid gap-6">
+    <div class="flex justify-end">
+      <button class="btn btn-outline" on:click={createWithAI}>
+        ✨ Créer avec l’IA
+      </button>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <h3 class="card-title">Matériau de la monture</h3>
+        <div class="join">
+          <button class="btn join-item" on:click={() => (state.frameMaterial='acetate')}>Acétate</button>
+          <button class="btn join-item" on:click={() => (state.frameMaterial='metal')}>Métal</button>
+          <button class="btn join-item" on:click={() => (state.frameMaterial='wood')}>Bois</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <h3 class="card-title">Couleur de la monture</h3>
+        <div class="flex gap-2">
+          <button class="btn" style="background:#111;color:#fff" on:click={() => (state.frameColor='#111111', updatePreview())}>Noir</button>
+          <button class="btn" style="background:#B56A2D" on:click={() => (state.frameColor='#B56A2D', updatePreview())}>Écaille</button>
+          <button class="btn" style="background:#9CA3AF" on:click={() => (state.frameColor='#9CA3AF', updatePreview())}>Gris</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <h3 class="card-title">Couleur des branches</h3>
+        <div class="flex gap-2">
+          <button class="btn" style="background:#111;color:#fff" on:click={() => (state.armColor='#111111', updatePreview())}>Noir</button>
+          <button class="btn" style="background:#B56A2D" on:click={() => (state.armColor='#B56A2D', updatePreview())}>Écaille</button>
+          <button class="btn" style="background:#9CA3AF" on:click={() => (state.armColor='#9CA3AF', updatePreview())}>Gris</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <h3 class="card-title">Largeur du pont</h3>
+        <input type="range" min="14" max="22" value={state.bridge}
+               on:input={(e)=> (state.bridge=+e.currentTarget.value)} class="range" />
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <h3 class="card-title">Taille des verres</h3>
+        <input type="range" min="45" max="55" value={state.lens}
+               on:input={(e)=> (state.lens=+e.currentTarget.value)} class="range" />
+      </div>
+    </div>
+  </div>
+</div>

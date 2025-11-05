@@ -1,0 +1,45 @@
+---
+const { active = "" } = Astro.props;
+---
+
+<header class="border-b border-neutral-200 bg-white">
+  <div class="max-w-[1280px] mx-auto flex items-center justify-between px-10 h-[72px]">
+    <!-- Logo (déconnecté → /) -->
+    <a href="/" class="flex items-center gap-3">
+      <img src="/assets/brand/logo-dark.svg" alt="TaVue" class="h-[38px] w-auto" />
+    </a>
+
+    <!-- Navigation (redirige vers la page "connexion requise") -->
+    <nav class="flex items-center gap-10 text-[15px]">
+      <a href="/connexion-requise"
+        class={`pb-1 ${active === "configurateur"
+          ? "border-b-2 border-neutral-900 font-medium"
+          : "text-neutral-600 hover:text-neutral-900"}`}>
+        Configurateur
+      </a>
+      <a href="/connexion-requise"
+        class={`pb-1 ${active === "creations"
+          ? "border-b-2 border-neutral-900 font-medium"
+          : "text-neutral-600 hover:text-neutral-900"}`}>
+        Mes créations
+      </a>
+    </nav>
+
+    <!-- Actions -->
+    <div class="flex items-center gap-3">
+      <a href="/connexion-requise"
+        class="px-5 py-2.5 bg-neutral-900 text-white rounded-md text-[14px] hover:bg-neutral-800 transition">
+        Créer avec l’IA
+      </a>
+      <!-- NOUVEAU : bouton Créer un compte -->
+      <a href="/?signup=1"
+        class="px-5 py-2.5 border border-neutral-300 rounded-md text-[14px] hover:bg-neutral-100 transition">
+        Créer un compte
+      </a>
+      <a href="/"
+        class="px-5 py-2.5 border border-neutral-300 rounded-md text-[14px] hover:bg-neutral-100 transition">
+        Se connecter
+      </a>
+    </div>
+  </div>
+</header>

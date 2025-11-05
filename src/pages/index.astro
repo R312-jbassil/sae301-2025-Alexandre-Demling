@@ -1,11 +1,153 @@
 ---
-import Welcome from '../components/Welcome.astro';
-import Layout from '../layouts/Layout.astro';
+import HeaderDeco from "../components/HeaderDeco.astro";
+import FooterDeco from "../components/FooterDeco.astro";
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+const params = new URLSearchParams(Astro.request.url.split("?")[1] || "");
+const startOnSignup = params.get("signup") === "1";
 ---
+<html lang="fr" data-theme="tavue">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TaVue — Connexion</title>
+  </head>
+  <body class="min-h-screen bg-base-200 text-base-content flex flex-col">
+    <HeaderDeco active="" />
 
-<Layout>
-	<Welcome />
-</Layout>
+    <main class="flex-1 px-6 py-16">
+      <section class="max-w-md mx-auto">
+        <h1 class="text-3xl font-extrabold mb-6 text-center" id="title">
+          { startOnSignup ? "Créer un compte" : "Se connecter" }
+        </h1>
+
+        <!-- Onglets -->
+        <div class="tabs tabs-boxed mb-6 flex justify-center">
+          <a class={`tab ${startOnSignup ? "" : "tab-active"}`} id="tab-login">Connexion</a>
+          <a class={`tab ${startOnSignup ? "tab-active" : ""}`} id="tab-signup">Créer un compte</a>
+        </div>
+
+        <!-- Formulaire LOGIN -->
+        <form id="form-login" class={`card bg-base-100 shadow-sm ${startOnSignup ? "hidden" : ""}`}>
+          <div class="card-body gap-3">
+            <label class="form-control">
+              <span class="label-text">Email</span>
+              <input name="email" type="email" required class="input input-bordered" />
+            </label>
+            <label class="form-control">
+              <span class="label-text">Mot de passe</span>
+              <input name="password" type="password" required class="input input-bordered" />
+            </label>
+            <button class="btn btn-neutral w-full" type="submit">Se connecter</button>
+            <p id="login-msg" class="text-sm"></p>
+          </div>
+        </form>
+
+        <!-- Formulaire SIGNUP -->
+        <form id="form-signup" class={`card bg-base-100 shadow-sm ${startOnSignup ? "" : "hidden"}`}>
+          <div class="card-body gap-3">
+            <div class="grid grid-cols-2 gap-3">
+              <label class="form-control">
+                <span class="label-text">Prénom</span>
+                <input name="first" type="text" class="input input-bordered" />
+              </label>
+              <label class="form-control">
+                <span class="label-text">Nom</span>
+                <input name="last" type="text" class="input input-bordered" />
+              </label>
+            </div>
+            <label class="form-control">
+              <span class="label-text">Email</span>
+              <input name="email" type="email" required class="input input-bordered" />
+            </label>
+            <label class="form-control">
+              <span class="label-text">Mot de passe (min 8)</span>
+              <input name="password" type="password" required minlength="8" class="input input-bordered" />
+            </label>
+            <button class="btn btn-neutral w-full" type="submit">Créer le compte</button>
+            <p id="signup-msg" class="text-sm"></p>
+          </div>
+        </form>
+      </section>
+    </main>
+
+    <FooterDeco />
+
+    <script is:inline>
+      // Gestion des onglets
+      const tabLogin  = document.getElementById('tab-login');
+      const tabSignup = document.getElementById('tab-signup');
+      const fLogin  = document.getElementById('form-login');
+      const fSignup = document.getElementById('form-signup');
+      const title   = document.getElementById('title');
+
+      function show(which){
+        const isSignup = which === 'signup';
+        tabLogin.classList.toggle('tab-active', !isSignup);
+        tabSignup.classList.toggle('tab-active', isSignup);
+        fLogin.classList.toggle('hidden', isSignup);
+        fSignup.classList.toggle('hidden', !isSignup);
+        title.textContent = isSignup ? "Créer un compte" : "Se connecter";
+        // met à jour l'URL (signup=1 ou rien) sans recharger
+        const url = new URL(location.href);
+        if (isSignup) url.searchParams.set('signup','1'); else url.searchParams.delete('signup');
+        history.replaceState(null, "", url);
+      }
+      tabLogin.addEventListener('click', () => show('login'));
+      tabSignup.addEventListener('click', () => show('signup'));
+
+      // Redirection après auth
+      const params = new URLSearchParams(location.search);
+      const redirectTo = params.get("redirect") || "/accueil";
+
+      // LOGIN submit
+      document.getElementById("form-login").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const f = e.currentTarget;
+        const msg = document.getElementById("login-msg");
+        msg.textContent = "Connexion...";
+        try {
+          const res = await fetch("/api/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: f.email.value.trim(), password: f.password.value })
+          });
+          if (res.ok) { location.href = redirectTo; return; }
+          const data = await res.json().catch(()=>({error:"Identifiants incorrects"}));
+          msg.textContent = data.error || "Identifiants incorrects";
+          msg.classList.add("text-error");
+        } catch {
+          msg.textContent = "Erreur réseau."; msg.classList.add("text-error");
+        }
+      });
+
+      // SIGNUP submit
+      document.getElementById("form-signup").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const f = e.currentTarget;
+        const msg = document.getElementById("signup-msg");
+        msg.textContent = "Création du compte...";
+        try {
+          const res = await fetch("/api/signup", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: f.email.value.trim(),
+              password: f.password.value,
+              first: f.first.value.trim(),
+              last: f.last.value.trim()
+            })
+          });
+          if (res.ok) { location.href = "/accueil"; return; }
+          const data = await res.json().catch(()=>({error:"Création impossible"}));
+          msg.textContent = data.error || "Création impossible";
+          msg.classList.add("text-error");
+        } catch {
+          msg.textContent = "Erreur réseau."; msg.classList.add("text-error");
+        }
+      });
+
+      // Ouvre l’onglet signup si ?signup=1
+      if (new URLSearchParams(location.search).get("signup")==="1") show('signup');
+    </script>
+  </body>
+</html>

@@ -1,0 +1,29 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+<BaseLayout title="Connexion – TaVue">
+  <section class="max-w-7xl mx-auto px-6 py-12 grid lg:grid-cols-2 gap-12 items-start">
+    <div class="space-y-6">
+      <p class="uppercase tracking-wide text-secondary">Bienvenue</p>
+      <h1 class="text-5xl font-extrabold">Votre espace personnel</h1>
+      <ul class="space-y-4 text-lg">
+        <li>✅ Sauvegardez vos créations</li>
+        <li>✅ Suivez vos commandes</li>
+        <li>✅ Fabrication française</li>
+      </ul>
+    </div>
+
+    <div class="card bg-base-100 shadow">
+      <div class="card-body gap-4">
+        <div class="tabs tabs-boxed w-max">
+          <a class="tab tab-active">Connexion</a>
+          <a class="tab">Inscription</a>
+        </div>
+        <button class="btn btn-outline w-full">Continuer avec Google</button>
+        <input class="input input-bordered w-full" placeholder="votre@email.com" />
+        <input class="input input-bordered w-full" type="password" placeholder="Mot de passe" />
+        <button class="btn btn-primary">Se connecter</button>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
