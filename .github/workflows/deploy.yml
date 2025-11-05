@@ -24,7 +24,6 @@ jobs:
     - name: Build project
       run: |
         npm run build
-        # On copie les fichiers nécessaires au serveur SSR
         cp package.json dist/server/
         cp package-lock.json dist/server/
 
@@ -49,9 +48,18 @@ jobs:
         username: ${{ secrets.USER }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         port: 22019
+        timeout: 30m    # <-- augmente le délai pour éviter l'arrêt prématuré
         script: |
+          echo "=== 🔧 Installation des dépendances ==="
           cd /var/www/sae301/server
-          npm ci --omit=dev
-          npm i astro send server-destroy --omit=dev
-          PORT=8095 pm2 restart sae301 || PORT=8095 pm2 start entry.mjs --name sae301
+          npm install --omit=dev
+
+          echo "=== 🚀 Redémarrage de l'application ==="
+          if pm2 describe sae301 > /dev/null; then
+            PORT=8095 pm2 restart sae301
+          else
+            PORT=8095 pm2 start entry.mjs --name sae301
+          fi
+
           pm2 save
+          pm2 status
