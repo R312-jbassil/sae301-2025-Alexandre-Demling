@@ -1,15 +1,28 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import pb from "../../utils/pb.ts";
 
 export const prerender = false;
 
-// Accès réservé
+// Auth obligatoire
 const user = Astro.locals.user;
 if (!user) {
   throw Astro.redirect("/?redirect=/configurateur/ia");
 }
 
+// Id de la lunette (si on vient de "Mes lunettes")
 const id = Astro.url.searchParams.get("id");
+
+// Fallback serveur : si on a un id, on tente de charger le SVG côté serveur
+let initSvgServer = "";
+if (id) {
+  try {
+    const rec = await pb.collection("Lunette").getOne(id);
+    initSvgServer = rec?.code_svg || "";
+  } catch (e) {
+    console.error("IA preload PB error:", e);
+  }
+}
 ---
 
 <BaseLayout title="TaVue — IA" active="configurateur">
@@ -18,7 +31,7 @@ const id = Astro.url.searchParams.get("id");
       <p class="uppercase tracking-widest text-xs opacity-60">Configuration IA</p>
       <h1 class="text-3xl md:text-4xl font-extrabold">Chat avec l'Intelligence Artificielle</h1>
       <p class="opacity-70 mt-1">
-        Décrivez vos lunettes idéales et notre IA génèrera/modifiera le code SVG.
+        Décrivez ou modifiez vos lunettes avec l’aide de l’IA.
         {id ? <span class="ml-1 opacity-80">(modification de <code>{id}</code>)</span> : null}
       </p>
     </div>
@@ -35,16 +48,19 @@ const id = Astro.url.searchParams.get("id");
                   <div class="bg-neutral text-neutral-content rounded-full w-8">IA</div>
                 </div>
                 <div class="bg-base-200 rounded-2xl px-3 py-2 text-sm max-w-[85%]">
-                  Bonjour ! Décrivez-moi les lunettes que vous souhaitez créer.
+                  Bonjour ! Décrivez-moi les lunettes que vous souhaitez créer ou modifiez celles chargées.
                 </div>
               </div>
             </div>
 
             <div class="mt-4 flex gap-2">
               <textarea id="prompt" class="textarea textarea-bordered flex-1 resize-none" rows="2"
-                placeholder="Ex : monture légère en acétate, branches métal, style rétro, couleur écaille..."></textarea>
+                placeholder="Ex : monture légère en acétate, branches métal, couleur écaille..."></textarea>
               <button id="send" class="btn btn-neutral shrink-0 flex items-center gap-2">
-                <svg id="spin-main" class="w-4 h-4 hidden animate-spin" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4A4 4 0 008 12H4z"/></svg>
+                <svg id="spin-main" class="w-4 h-4 hidden animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4A4 4 0 008 12H4z"/>
+                </svg>
                 <span>Lancer l’IA</span>
               </button>
             </div>
@@ -60,11 +76,11 @@ Aucun code pour l’instant.
         </div>
       </section>
 
-      <!-- Colonne droite : Aperçu SVG + actions -->
+      <!-- Colonne droite : Aperçu SVG + édition + actions -->
       <section class="lg:col-span-5">
         <div class="card bg-base-100 shadow-sm">
           <div class="card-body">
-            <h3 class="card-title text-base">Aperçu SVG Généré</h3>
+            <h3 class="card-title text-base">Aperçu SVG</h3>
             <div
               id="preview"
               class="rounded-xl bg-base-200/70 flex items-center justify-center min-h-[360px] p-4 text-sm opacity-70"
@@ -72,22 +88,35 @@ Aucun code pour l’instant.
               Aucun SVG généré
             </div>
 
-            <!-- Bloc édition IA -->
+            <!-- Édition avec l’IA -->
             <div class="mt-4">
               <div class="flex items-center justify-between">
                 <label for="edit-instr" class="label-text font-medium">Éditer avec l’IA</label>
-                <small class="opacity-60">Modifie le SVG courant via une instruction</small>
+                <small class="opacity-60">Modifie le SVG actuel via une instruction</small>
               </div>
               <div class="flex gap-2 mt-2">
                 <input id="edit-instr" type="text" class="input input-bordered w-full"
                   placeholder="Ex : Passe la monture en noir et augmente les verres à 52mm" />
                 <button id="btn-edit-ai" class="btn btn-ghost border flex items-center gap-2">
-                  <svg id="spin-edit" class="w-4 h-4 hidden animate-spin" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4A4 4 0 008 12H4z"/></svg>
+                  <svg id="spin-edit" class="w-4 h-4 hidden animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4A4 4 0 008 12H4z"/>
+                  </svg>
                   <span>Appliquer</span>
                 </button>
               </div>
+
+              <!-- Zone d’édition du code SVG -->
+              <div class="mt-2">
+                <textarea id="edit-source" class="textarea textarea-bordered w-full font-mono text-xs"
+                  rows="8" placeholder="Le SVG à éditer apparaîtra ici"></textarea>
+                <small class="opacity-60">
+                  Tu peux modifier manuellement le code SVG ici — l’IA partira de ce contenu.
+                </small>
+              </div>
             </div>
 
+            <!-- Boutons -->
             <div class="mt-4 flex gap-3">
               <button id="btn-save" class="btn btn-primary" disabled>Sauvegarder</button>
               <a class="btn" href="/configurateur">Éditer dans le configurateur</a>
@@ -99,7 +128,6 @@ Aucun code pour l’instant.
   </main>
 
   <script is:inline>
-    // --- État & helpers ---
     const chatEl = document.getElementById('chat');
     const promptEl = document.getElementById('prompt');
     const sendBtn = document.getElementById('send');
@@ -108,15 +136,17 @@ Aucun code pour l’instant.
     const preview = document.getElementById('preview');
     const saveBtn = document.getElementById('btn-save');
     const codeEl = document.getElementById('svg-code');
-
     const editInput = document.getElementById('edit-instr');
     const editBtn = document.getElementById('btn-edit-ai');
     const spinEdit = document.getElementById('spin-edit');
+    const editSource = document.getElementById('edit-source');
 
     const messages = [
       { role: "assistant", content: "Bonjour ! Décrivez-moi les lunettes que vous souhaitez créer." }
     ];
 
+    // Helpers
+    const escapeHtml = (s) => String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
     function addBubble(role, content) {
       const wrap = document.createElement('div');
       wrap.className = 'flex items-start gap-3 ' + (role === 'user' ? 'justify-end' : '');
@@ -137,12 +167,6 @@ Aucun code pour l’instant.
       chatEl.scrollTop = chatEl.scrollHeight;
     }
 
-    const escapeHtml = (s) =>
-      String(s || "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-
     async function callGenerate(body) {
       const res = await fetch('/api/generate-svg', {
         method: 'POST',
@@ -158,22 +182,52 @@ Aucun code pour l’instant.
       messages.push({ role: 'assistant', content: data.fullResponse || '' });
       addBubble('assistant', 'Proposition générée. Aperçu à droite et code ci-dessous.');
 
-      // Preview exécutable
       if (data.svg) {
         preview.classList.remove('opacity-70');
         preview.innerHTML = data.svg;
         preview.dataset.svg = data.svg;
+        editSource.value = data.svg;
         saveBtn.disabled = false;
       } else {
         preview.innerHTML = '<span class="opacity-60">La réponse ne contenait pas de SVG valide.</span>';
         saveBtn.disabled = true;
       }
-      // Code brut
+
       const codeText = data.svg || (data.fullResponse || '');
       codeEl.innerHTML = codeText ? escapeHtml(codeText) : "Aucun code pour l’instant.";
     }
 
-    // --- Génération initiale ---
+    // 1) Charger le SVG depuis Mes lunettes via sessionStorage
+    try {
+      const initSvg = sessionStorage.getItem("ia_init_svg");
+      if (initSvg) {
+        preview.classList.remove('opacity-70');
+        preview.innerHTML = initSvg;
+        preview.dataset.svg = initSvg;
+        editSource.value = initSvg;
+        saveBtn.disabled = false;
+        codeEl.innerHTML = escapeHtml(initSvg);
+        sessionStorage.removeItem("ia_init_svg");
+      }
+    } catch (e) {
+      console.warn("Impossible de lire ia_init_svg:", e);
+    }
+
+    // 2) Fallback serveur : si aucun SVG chargé et un id est présent
+    (function serverFallback(){
+      if (preview.dataset.svg) return;
+      const FROM_SERVER = `${initSvgServer?.replaceAll("&","&amp;").replaceAll("`","\\`").replaceAll("</","<\\/")}`;
+      if (FROM_SERVER) {
+        preview.classList.remove('opacity-70');
+        preview.innerHTML = FROM_SERVER;
+        preview.dataset.svg = FROM_SERVER;
+        editSource.value = FROM_SERVER;
+        saveBtn.disabled = false;
+        codeEl.innerHTML = escapeHtml(FROM_SERVER);
+      }
+    })();
+
+    // Génération IA depuis un prompt libre
     sendBtn.addEventListener('click', async () => {
       const text = promptEl.value.trim();
       if (!text) return;
@@ -181,71 +235,87 @@ Aucun code pour l’instant.
       addBubble('user', text);
       messages.push({ role: 'user', content: text });
 
-      sendBtn.disabled = true; spinMain.classList.remove('hidden');
+      sendBtn.disabled = true;
+      spinMain.classList.remove('hidden');
 
       try {
         const data = await callGenerate({ prompt: text });
         applyResult(data);
       } catch (err) {
         console.error(err);
-        addBubble('assistant', "Désolé, je n'ai pas réussi à générer le SVG (" + err.message + ").");
+        addBubble('assistant', "Erreur IA : " + err.message);
       } finally {
-        sendBtn.disabled = false; spinMain.classList.add('hidden');
+        sendBtn.disabled = false;
+        spinMain.classList.add('hidden');
       }
     });
 
-    // --- Édition avec l'IA (modifie le SVG courant selon une instruction) ---
+    // Éditer le SVG courant via instruction
     editBtn.addEventListener('click', async () => {
       const instr = editInput.value.trim();
-      const currentSvg = preview.dataset.svg || "";
+      const currentSvg = editSource.value.trim();
       if (!instr) return alert("Écris une instruction d’édition.");
-      if (!currentSvg) return alert("Génère d’abord un SVG.");
+      if (!currentSvg) return alert("Aucun SVG à éditer.");
 
-      // Message utilisateur + contexte SVG
       const editPrompt =
         "Here is the current SVG to modify:\n" +
         currentSvg +
         "\n\nInstruction: " + instr +
-        "\nReturn a single COMPLETE <svg>...</svg> only (no markdown, no comments).";
+        "\nReturn only a single valid <svg>...</svg> (no markdown).";
 
       addBubble('user', "Édite : " + instr);
       messages.push({ role: 'user', content: editPrompt });
 
-      editBtn.disabled = true; spinEdit.classList.remove('hidden');
+      editBtn.disabled = true;
+      spinEdit.classList.remove('hidden');
 
       try {
-        const data = await callGenerate({ messages: messages.filter(m => m.role !== 'assistant' || m.content.trim()) });
+        const data = await callGenerate({ messages: messages });
         applyResult(data);
       } catch (err) {
         console.error(err);
         addBubble('assistant', "Impossible de modifier le SVG (" + err.message + ").");
       } finally {
-        editBtn.disabled = false; spinEdit.classList.add('hidden');
+        editBtn.disabled = false;
+        spinEdit.classList.add('hidden');
       }
     });
 
-    // --- Sauvegarde PB ---
+    // Sauvegarde : UPDATE si id présent, sinon CREATE
     saveBtn.addEventListener('click', async () => {
       const svg = preview.dataset.svg;
       if (!svg) return;
+
       saveBtn.disabled = true;
       saveBtn.textContent = 'Sauvegarde...';
 
+      const currentId = new URLSearchParams(location.search).get("id") || null;
+
       try {
-        const res = await fetch('/api/save-svg', {
+        let endpoint, body;
+        if (currentId) {
+          // ➜ EDIT de la lunette existante
+          endpoint = '/api/lunettes/update';
+          body = { id: currentId, code_svg: svg, name: 'SVG IA ' + new Date().toLocaleString() };
+        } else {
+          // ➜ CRÉATION d'une nouvelle
+          endpoint = '/api/save-svg';
+          body = { name: 'SVG IA ' + new Date().toLocaleString(), code_svg: svg, chat_history: messages };
+        }
+
+        const res = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({
-            name: 'SVG IA ' + new Date().toLocaleString(),
-            code_svg: svg,
-            chat_history: messages
-          })
+          body: JSON.stringify(body)
         });
-        const out = await res.json();
-        if (!res.ok || !out.success) throw new Error(out.error || 'Save failed');
 
-        alert('SVG sauvegardé ✅ (id: ' + (out.data?.id || '—') + ')');
+        const out = await res.json();
+        if (!res.ok || out.error || out.success === false) {
+          throw new Error(out.error || 'Save failed');
+        }
+
+        alert(currentId ? 'Modifié ✅' : 'Créé ✅');
         saveBtn.textContent = 'Sauvegardé ✓';
       } catch (e) {
         console.error(e);

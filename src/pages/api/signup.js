@@ -1,7 +1,7 @@
 // ❗ Obligatoire si ton projet n'est pas en `output: 'server'`
 export const prerender = false;
 
-import pb, { exportAuthCookie } from "../utils/pb.ts";
+import pb from "../utils/pb.ts";
 
 export async function POST({ request, cookies }) {
   // Vérifie le Content-Type et parse proprement
@@ -23,7 +23,7 @@ export async function POST({ request, cookies }) {
   }
 
   try {
-    // 1) création user dans la collection d'auth 'users'
+    // 1️⃣ Création utilisateur
     await pb.collection("users").create({
       email,
       password,
@@ -31,21 +31,30 @@ export async function POST({ request, cookies }) {
       name: `${first ?? ""} ${last ?? ""}`.trim(),
     });
 
-    // 2) login immédiat
+    // 2️⃣ Connexion immédiate
     await pb.collection("users").authWithPassword(email, password);
 
-    // 3) cookie httpOnly
-    cookies.set("pb_auth", exportAuthCookie(), {
+    // 3️⃣ Création du cookie d’auth httpOnly
+    const cookieStr = pb.authStore.exportToCookie({
+      httpOnly: true,
+      secure: import.meta.env.PROD,
+      sameSite: "strict",
+    });
+
+    // On découpe le cookie pour en extraire nom/valeur
+    const [, name, value] = cookieStr.match(/^(.*?)=(.*?);/) || [];
+    cookies.set(name || "pb_auth", value || "", {
       httpOnly: true,
       sameSite: "strict",
       path: "/",
       secure: import.meta.env.PROD,
     });
 
+    // 4️⃣ Retour
     return new Response(JSON.stringify({ user: pb.authStore.model }), { status: 200 });
   } catch (err) {
-    console.error(err);
-    // Email déjà pris, mot de passe trop court, etc.
-    return new Response(JSON.stringify({ error: "Signup failed" }), { status: 400 });
+    console.error("Signup failed:", err);
+    const msg = err?.data?.message || err?.message || "Signup failed";
+    return new Response(JSON.stringify({ error: msg }), { status: 400 });
   }
 }
