@@ -4,6 +4,7 @@ import Header from "../components/Header.astro";
 import Footer from "../components/Footer.astro";
 
 export const prerender = false;
+
 const MATS = [
   { label: "Acétate", sub: "Léger et confortable" },
   { label: "Métal", sub: "Élégant et durable" },
@@ -40,19 +41,17 @@ const BRANCHES_COLORS = [
         <p class="opacity-70 mt-3">Personnalisez chaque détail de vos lunettes. Fabrication française, qualité artisanale.</p>
       </section>
 
-      <!-- CTA IA aligné à droite -->
       <div class="flex justify-end mb-4">
         <a href="/configurateur/ia" class="btn btn-neutral">Créer avec l’IA</a>
       </div>
 
-      <!-- Grille principale -->
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <!-- Aperçu -->
         <div class="lg:col-span-5">
           <div class="card bg-base-100 shadow-sm">
             <div class="card-body">
               <div class="rounded-2xl bg-base-200 flex items-center justify-center p-6 min-h-[320px]">
-                <!-- SVG avec variables CSS -->
+                <!-- SVG -->
                 <svg id="lunettes-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 595.28 841.89" class="w-full max-w-[440px] h-auto">
                   <defs>
                     <style>
@@ -77,7 +76,7 @@ const BRANCHES_COLORS = [
                     <g id="monture">
                       <path class="cls-4" d="M385.31,180.81c-.24-3.41-9.57-5.22-12.71-6.4-3.14-1.18-15.7,1.96-15.7,1.96-12.17-3.14-54.55-9.03-78.88-9.03s-32.57,11.38-35.32,10.99c-2.75-.39-17.27-.78-23.55-1.96-6.28-1.18-5.1-14.13-39.25-26.48-34.14-12.35-68.29-12.42-68.29-12.42-13.35,4.66-6.76,18.49-6.76,18.49l2.05,6.35c4.32,2.03,3.14,10.52,4.71,23.08s7.46,28.65,14.13,38.46c6.67,9.81,31.79,20.8,44.35,21.19s23.55-1.96,31.79-15.31c8.24-13.34,16.88-36.89,16.88-36.89l10.2,1.57s2.91.31,5.35,3.09,4.43,8.03,7.6,17.31c7.56,22.1,25.12,39.25,25.12,39.25,0,0,5.6,7.43,33.44,12.66,23.08,4.34,42.7-2.46,42.7-2.46,17.72-7.17,21.63-44.96,21.63-44.96,0,0,1.83-13.3,7.81-16.65,7.37-4.14,8.27-4.44,12.71-5.32,3.61-.71.24-13.13,0-16.54ZM190.5,231.32c-9.42,5.1-32.18,7.06-46.31-3.92-14.13-10.99-20.8-30.22-22.76-52.98s7.1-25.23,7.1-25.23c0,0,14.88-.67,34.11,4.03,19.23,4.71,40.42,18.05,40.82,26.69.39,8.63-3.53,46.31-12.95,51.41ZM344.73,255.65c-9.03,4.32-21.47,4.71-31.93,3.92-10.46-.78-37.54-1.57-47.35-31.4,0,0-2.75-14.13-5.1-17.27-2.35-3.14-9.42-14.48-9.42-18.43,0-8.23,7.15-12.97,7.15-12.97,0,0,8.16-5.1,18.75-5.1,10.6,0,64.75,2.75,72.21,12.95,7.46,10.2,7.06,21.98,8.24,31.4,1.18,9.42-3.53,32.57-12.56,36.89Z"/>
                     </g>
-                    <g id="verres">
+                    <g id="verres-shape">
                       <path class="cls-5" d="M116.32,162.87c-.88,6.05.4,37.41,11.44,55.31s37.04,21.35,41.37,21.31,18.51,1.02,24.47-9.27c4.97-8.59,13.17-43.48,9.12-53.05-6.26-14.82-40.4-24.02-40.4-24.02,0,0-26.85-5.46-33.82-4.46,0,0-9.97-.96-12.17,14.17Z"/>
                       <path class="cls-5" d="M247.32,192.54s-1.09-9.55,19.57-16.69c11.76-4.06,60.46,3.23,60.46,3.23,0,0,19.09,4.06,21.71,8.28,2.62,4.22,9.46,17.24,8.29,37.97-1.14,20.21-7.31,26.8-12.61,30.31,0,0-7.1,4.93-21.34,5.93-26.65,1.88-37.01-1.14-46.19-7.73-29.88-21.46-29.88-61.3-29.88-61.3Z"/>
                     </g>
@@ -86,7 +85,7 @@ const BRANCHES_COLORS = [
               </div>
 
               <div class="mt-4 flex gap-3">
-                <button class="btn btn-ghost border">Enregistrer</button>
+                <button class="btn btn-ghost border" id="btn-save">Enregistrer</button>
                 <button class="btn btn-neutral flex-1 justify-between">
                   <span>Commander</span>
                   <span class="opacity-80">189€</span>
@@ -98,8 +97,15 @@ const BRANCHES_COLORS = [
 
         <!-- Panneaux -->
         <div class="lg:col-span-7 grid gap-6">
-          <!-- Matériaux -->
+          <div class="card bg-base-100 shadow-sm">
+            <div class="card-body">
+              <label class="label-text font-medium mb-2" for="nom-lunette">Nom de la lunette</label>
+              <input id="nom-lunette" class="input input-bordered w-full" placeholder="Ma paire préférée" />
+            </div>
+          </div>
+
           <div class="grid md:grid-cols-2 gap-6">
+            <!-- Matériaux -->
             <div class="card bg-base-100 shadow-sm">
               <div class="card-body">
                 <h3 class="card-title text-base">Matériau de la monture</h3>
@@ -150,7 +156,7 @@ const BRANCHES_COLORS = [
                   <h3 class="card-title text-base">Taille des verres</h3>
                   <span id="verres-value" class="text-sm">50 mm</span>
                 </div>
-                <input id="verres" type="range" min="45" max="55" value="50" class="range range-sm mt-4" />
+                <input id="verresRange" type="range" min="45" max="55" value="50" class="range range-sm mt-4" />
                 <div class="flex justify-between text-xs opacity-60 mt-1">
                   <span>45 mm (Petit)</span><span>55 mm (Large)</span>
                 </div>
@@ -192,11 +198,13 @@ const BRANCHES_COLORS = [
 
     <Footer />
 
-<!-- JS (sans emojis) -->
+<!-- JS -->
 <script is:inline>
   const svg = document.getElementById('lunettes-svg');
   svg.style.setProperty('--monture-color', '#111827');  // Noir
   svg.style.setProperty('--branches-color', '#8b5a2b'); // Écaille
+
+  const nomInput = document.getElementById('nom-lunette');
 
   function activateOne(container, btn) {
     container.querySelectorAll('button').forEach(b => b.classList.remove('btn-active'));
@@ -229,70 +237,74 @@ const BRANCHES_COLORS = [
 
   // Sliders
   const pont = document.getElementById('pont');
-  const verres = document.getElementById('verres');
+  const verresRange = document.getElementById('verresRange');
   const pv = document.getElementById('pont-value');
   const vv = document.getElementById('verres-value');
-  const fmt = v => parseInt(v, 10) + ' mm';
-  const update = () => { pv.textContent = fmt(pont.value); vv.textContent = fmt(verres.value); };
+
+  const fmt = (v) => Number.parseInt(String(v), 10) + ' mm';
+  const update = () => {
+    pv.textContent = fmt(pont.value);
+    vv.textContent = fmt(verresRange.value);
+  };
   pont.addEventListener('input', update);
-  verres.addEventListener('input', update);
+  verresRange.addEventListener('input', update);
   update();
 
-  // === Enregistrement dans PB via /api/lunettes ===
-  const saveBtn = document.querySelector('.btn-ghost.border');
+  // === Enregistrement PB via /api/save-svg ===
+  const saveBtn = document.getElementById('btn-save');
 
   saveBtn.addEventListener('click', async () => {
     const btn = saveBtn;
     btn.disabled = true;
     btn.textContent = "Enregistrement...";
 
-    // Récupération des valeurs choisies
-    const mm = document.querySelector('#mat-monture .btn-active span.font-medium')?.textContent.trim();
-    const mb = document.querySelector('#mat-branches .btn-active span.font-medium')?.textContent.trim();
-    const cm = document.querySelector('#color-monture .btn-active span.ml-2')?.textContent.trim();
-    const cb = document.querySelector('#color-branches .btn-active span.ml-2')?.textContent.trim();
+    const mm = document.querySelector('#mat-monture .btn-active span.font-medium')?.textContent.trim() || null;
+    const mb = document.querySelector('#mat-branches .btn-active span.font-medium')?.textContent.trim() || null;
+    const cm = document.querySelector('#color-monture .btn-active span.ml-2')?.textContent.trim() || null;
+    const cb = document.querySelector('#color-branches .btn-active span.ml-2')?.textContent.trim() || null;
 
     const payload = {
-      matMont: mm,
-      matBra: mb,
-      colorMont: cm,
-      colorBra: cb,
-      pont: parseInt(pont.value, 10),
-      verres: parseInt(verres.value, 10),
-      svg: document.getElementById('lunettes-svg').outerHTML
+      nom_lunette: nomInput.value?.trim() || null,
+      code_svg: document.getElementById('lunettes-svg').outerHTML,
+      largeur_pont_mm: Number.parseInt(pont.value, 10),
+      taille_verre_mm: Number.parseInt(verresRange.value, 10),
+
+      // libellés pour résolution d'IDs côté serveur
+      matMontLabel: mm,
+      matBraLabel: mb,
+      colMontLabel: cm,
+      colBraLabel: cb,
     };
 
     try {
-      const res = await fetch("/api/lunettes", {
+      const res = await fetch("/api/save-svg", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(payload)
       });
 
-      if (res.status === 401) {
-        alert("Veuillez vous connecter pour enregistrer.");
-        location.href = "/?redirect=/configurateur";
+      const out = await res.json().catch(() => ({}));
+
+      if (!res.ok || out.success === false) {
+        alert("Échec de l’enregistrement.\n" + (out.error || "Server error"));
+        btn.disabled = false;
+        btn.textContent = "Enregistrer";
         return;
       }
 
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        alert("Échec de l’enregistrement.\n" + (e.error || "Server error"));
-        return;
-      }
-
-      // ✅ Succès : message + bouton mis à jour (pas de redirection)
       alert("Modèle enregistré ✅");
       btn.textContent = "Enregistré ✓";
       btn.disabled = false;
 
     } catch (err) {
       console.error(err);
-      alert("Échec de l’enregistrement.");
+      alert("Échec de l’enregistrement (réseau).");
       btn.disabled = false;
       btn.textContent = "Enregistrer";
     }
   });
 </script>
-</body>
+
+  </body>
 </html>
