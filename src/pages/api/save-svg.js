@@ -39,7 +39,7 @@ export async function POST({ request, cookies }) {
     // 2) Body — mêmes clés que le front
     const {
       nom_lunette,
-      code_svg,
+      cod_svg,
       largeur_pont_mm,
       taille_verre_mm,
       // libellés à résoudre
@@ -50,7 +50,7 @@ export async function POST({ request, cookies }) {
       chat_history,
     } = await request.json().catch(() => ({}));
 
-    if (!code_svg) return json({ success: false, error: "code_svg is required" }, 400);
+    if (!cod_svg) return json({ success: false, error: "code_svg is required" }, 400);
 
     // id du user connecté (collection "users")
     const me = pb.authStore.model?.id ?? pb.authStore.record?.id;
@@ -66,7 +66,7 @@ export async function POST({ request, cookies }) {
     // 4) Payload pour "lunette"
     const payload = {
       nom_lunette: nom_lunette ?? null,
-      code_svg,
+      cod_svg,
       largeur_pont_mm: Number.isFinite(largeur_pont_mm) ? largeur_pont_mm : null,
       taille_verre_mm: Number.isFinite(taille_verre_mm) ? taille_verre_mm : null,
       chat_history: chat_history || [],

@@ -16,15 +16,14 @@ function collection() {
 }
 
 /**
- * Scoppe le CSS d’un SVG :
+ * Scope le CSS d’un SVG pour éviter que ses styles affectent d’autres SVG.
  * - ajoute data-scope="<scopeId>" sur <svg>
  * - préfixe tous les sélecteurs des <style> par [data-scope="<scopeId>"]
- * Évite que le CSS d’un SVG affecte les autres SVG présents sur la page.
  */
 function scopeSvgCss(svgString, scopeId) {
   if (!svgString || typeof svgString !== "string") return svgString;
 
-  // si déjà scopé avec ce scope, on ne touche à rien
+  // déjà scopé ?
   if (new RegExp(`data-scope=["']${scopeId}["']`).test(svgString)) {
     return svgString;
   }
@@ -37,12 +36,9 @@ function scopeSvgCss(svgString, scopeId) {
       : `<svg${attrs} data-scope="${scopeId}">`)
   );
 
-  // 2) préfixer chaque bloc de règles dans <style> … </style>
-  //    on ignore les @-rules (ex : @keyframes)
+  // 2) préfixer chaque bloc de règles dans <style> … </style> (ignore les @-rules)
   out = out.replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, (_m, css) => {
-    // si déjà préfixé pour n'importe quel data-scope, on n’insiste pas
     if (/\[data-scope=/.test(css)) return `<style>${css}</style>`;
-
     const prefixed = String(css).replace(
       /(^|})(\s*)([^@}{][^{]*?)\s*\{/g,
       (__, before, spaces, selector) =>
@@ -62,28 +58,25 @@ export async function POST({ request, cookies }) {
     if (!pb.authStore.isValid) return json({ error: "Unauthorized" }, 401);
 
     // 2) Body
-    const { id, code_svg, name } = await request.json().catch(() => ({}));
-    if (!id)       return json({ error: "Missing id" }, 400);
-    if (!code_svg) return json({ error: "Missing code_svg" }, 400);
+    const { id, cod_svg, name } = await request.json().catch(() => ({}));
+    if (!id)      return json({ error: "Missing id" }, 400);
+    if (!cod_svg) return json({ error: "Missing cod_svg" }, 400);
 
     const me = pb.authStore.model?.id ?? pb.authStore.record?.id;
 
     // 3) Vérifier que l'enregistrement existe et appartient au user
     const rec = await collection().getOne(id);
-
     const owns =
       rec.id_user === me ||
       (Array.isArray(rec.id_user) && rec.id_user.includes(me));
-
     if (!owns) return json({ error: "Forbidden" }, 403);
 
-    // 4) Scope du SVG pour éviter les fuites de style
-    //    on utilise un scope stable basé sur l'id de la lunette
-    const scopedSvg = scopeSvgCss(code_svg, `lu-${id}`);
+    // 4) Scope du SVG pour éviter les fuites de style (scope stable basé sur l'id)
+    const scopedSvg = scopeSvgCss(cod_svg, `lu-${id}`);
 
     // 5) Mettre à jour uniquement les champs concernés
     const payload = {
-      code_svg: scopedSvg,
+      cod_svg: scopedSvg,            // <-- champ PB
       ...(name ? { nom_lunette: name } : {}),
     };
 

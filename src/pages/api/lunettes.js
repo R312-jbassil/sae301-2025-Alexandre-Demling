@@ -109,7 +109,7 @@ export async function POST({ request, cookies }) {
     taille_verre_mm: toInt(data.verres),
 
     // si tu as un champ "code_svg" (texte long)
-    ...(data.svg !== undefined ? { code_svg: data.svg } : {}),
+    ...(data.svg !== undefined ? { cod_svg: data.svg } : {}),
   };
 
   try {
