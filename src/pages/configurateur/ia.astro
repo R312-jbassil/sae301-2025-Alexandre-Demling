@@ -18,7 +18,7 @@ let initSvgServer = "";
 if (id) {
   try {
     const rec = await pb.collection("Lunette").getOne(id);
-    initSvgServer = rec?.cod_svg || "";   // <-- champ PB
+    initSvgServer = rec?.cod_svg || "";
   } catch (e) {
     console.error("IA preload PB error:", e);
   }
@@ -56,7 +56,7 @@ if (id) {
             <div class="mt-4 flex gap-2">
               <textarea id="prompt" class="textarea textarea-bordered flex-1 resize-none" rows="2"
                 placeholder="Ex : monture légère en acétate, branches métal, couleur écaille..."></textarea>
-              <button id="send" class="btn btn-neutral shrink-0 flex items-center gap-2">
+              <button id="send" type="button" class="btn btn-neutral shrink-0 flex items-center gap-2">
                 <svg id="spin-main" class="w-4 h-4 hidden animate-spin" viewBox="0 0 24 24" fill="none">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4A4 4 0 008 12H4z"/>
@@ -97,7 +97,7 @@ Aucun code pour l’instant.
               <div class="flex gap-2 mt-2">
                 <input id="edit-instr" type="text" class="input input-bordered w-full"
                   placeholder="Ex : Passe la monture en noir et augmente les verres à 52mm" />
-                <button id="btn-edit-ai" class="btn btn-ghost border flex items-center gap-2">
+                <button id="btn-edit-ai" type="button" class="btn btn-ghost border flex items-center gap-2">
                   <svg id="spin-edit" class="w-4 h-4 hidden animate-spin" viewBox="0 0 24 24" fill="none">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4A4 4 0 008 12H4z"/>
@@ -118,7 +118,7 @@ Aucun code pour l’instant.
 
             <!-- Boutons -->
             <div class="mt-4 flex gap-3">
-              <button id="btn-save" class="btn btn-primary" disabled>Sauvegarder</button>
+              <button id="btn-save" type="button" class="btn btn-primary" disabled>Sauvegarder</button>
               <a class="btn" href="/configurateur">Aller dans le configurateur</a>
             </div>
           </div>
@@ -173,8 +173,12 @@ Aucun code pour l’instant.
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       });
-      const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.error || 'Generation failed');
+      let data;
+      try { data = await res.json(); }
+      catch { data = { success:false, error:'Réponse invalide du serveur' }; }
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error || `HTTP ${res.status}`);
+      }
       return data;
     }
 
@@ -216,7 +220,7 @@ Aucun code pour l’instant.
     // 2) Fallback serveur : si aucun SVG chargé et un id est présent
     (function serverFallback(){
       if (preview.dataset.svg) return;
-      const FROM_SERVER = `${initSvgServer?.replaceAll("&","&amp;").replaceAll("`","\\`").replaceAll("</","<\\/")}`;
+      const FROM_SERVER = (typeof initSvgServer !== "undefined" && initSvgServer) ? String(initSvgServer) : "";
       if (FROM_SERVER) {
         preview.classList.remove('opacity-70');
         preview.innerHTML = FROM_SERVER;
@@ -229,8 +233,11 @@ Aucun code pour l’instant.
 
     // Génération IA depuis un prompt libre
     sendBtn.addEventListener('click', async () => {
-      const text = promptEl.value.trim();
-      if (!text) return;
+      let text = promptEl.value.trim();
+      if (!text) {
+        // on utilise un prompt par défaut pour éviter l’impression de "rien ne se passe"
+        text = "Génère un SVG de lunettes modernes prêt à être affiché (une seule balise <svg>), monture sobre.";
+      }
       promptEl.value = '';
       addBubble('user', text);
       messages.push({ role: 'user', content: text });
@@ -239,7 +246,9 @@ Aucun code pour l’instant.
       spinMain.classList.remove('hidden');
 
       try {
-        const data = await callGenerate({ prompt: text });
+        // on peut envoyer le svg courant comme contexte si présent
+        const current = editSource.value.trim();
+        const data = await callGenerate(current ? { prompt: text, baseSvg: current } : { prompt: text });
         applyResult(data);
       } catch (err) {
         console.error(err);
@@ -296,9 +305,9 @@ Aucun code pour l’instant.
         if (currentId) {
           // ➜ EDIT de la lunette existante
           endpoint = '/api/lunettes/update';
-          body = { id: currentId, cod_svg: svg, name: 'SVG IA ' + new Date().toLocaleString() }; // <-- cod_svg
+          body = { id: currentId, cod_svg: svg, name: 'SVG IA ' + new Date().toLocaleString() };
         } else {
-          // ➜ CRÉATION d'une nouvelle (assure-toi que /api/save-svg accepte cod_svg)
+          // ➜ CRÉATION d'une nouvelle
           endpoint = '/api/save-svg';
           body = { name: 'SVG IA ' + new Date().toLocaleString(), cod_svg: svg, chat_history: messages };
         }
@@ -310,7 +319,7 @@ Aucun code pour l’instant.
           body: JSON.stringify(body)
         });
 
-        const out = await res.json();
+        const out = await res.json().catch(() => ({}));
         if (!res.ok || out.error || out.success === false) {
           throw new Error(out.error || 'Save failed');
         }
