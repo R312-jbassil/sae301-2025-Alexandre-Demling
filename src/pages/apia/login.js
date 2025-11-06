@@ -1,11 +1,13 @@
 // src/pages/apia/login.js
 export const prerender = false;
 
-import pb from "../../utils/pb.ts";
+import PocketBase from "pocketbase";
 
+// Nom de la collection d'auth PB (auth collection)
 const AUTH_COLLECTION =
   (import.meta.env.PUBLIC_PB_AUTH_COLLECTION ?? "").trim() || "users";
 
+// Helper JSON
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
@@ -14,32 +16,36 @@ const json = (body, status = 200) =>
 
 export async function POST({ request, cookies }) {
   try {
-    const data = await request.json().catch(() => null);
-    const { email, identifier, password } = data || {};
-    const idOrEmail = identifier ?? email;
-    if (!idOrEmail || !password) return json({ error: "Missing credentials" }, 400);
+    // Base URL de PB : d'abord l'env PUBLIC_PB_URL, sinon l'origine de la requête
+    // (ex: https://sae301.alexandre-demling.fr). Le SDK ajoutera /api tout seul.
+    const origin = new URL(request.url).origin;
+    const baseUrl =
+      (import.meta.env.PUBLIC_PB_URL ?? "").trim() || origin;
 
-    // état propre et pas d’annulation auto
-    pb.authStore.clear();
+    const { email, identifier, password } = await request.json().catch(() => ({}));
+    const id = identifier ?? email;
+    if (!id || !password) return json({ error: "Missing credentials" }, 400);
+
+    const pb = new PocketBase(baseUrl);
     pb.autoCancellation(false);
+    pb.authStore.clear();
 
-    // 👉 collection d'auth correcte (users)
-    await pb.collection(AUTH_COLLECTION).authWithPassword(idOrEmail, password);
+    // Auth PB en ligne (email ou username)
+    await pb.collection(AUTH_COLLECTION).authWithPassword(id, password);
 
-    // cookie pb_auth
+    // Déposer le cookie pb_auth depuis l'authStore
     const header = pb.authStore.exportToCookie({
       httpOnly: true,
-      secure: import.meta.env.PROD,
+      secure: true,      // en ligne = HTTPS
       sameSite: "Lax",
       path: "/",
     });
     const m = header.match(/pb_auth=([^;]+)/);
-    const value = m?.[1] || "";
-    if (!value) return json({ error: "Auth cookie error" }, 500);
+    if (!m) return json({ error: "Auth cookie error" }, 500);
 
-    cookies.set("pb_auth", value, {
+    cookies.set("pb_auth", m[1], {
       httpOnly: true,
-      secure: import.meta.env.PROD,
+      secure: true,
       sameSite: "Lax",
       path: "/",
     });
