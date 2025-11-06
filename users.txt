@@ -1,0 +1,7 @@
+login de l'app;
+email: alexandredemlingg@gmail.com
+mot de passe: Platinium.28
+
+login pocketbase:
+email : alexandredemling@gmail.com
+pocketbase : Platinium.28
