@@ -1,52 +1,55 @@
-// src/pages/api/login.js
+// src/pages/apia/login.js
 export const prerender = false;
 
-import pb, { exportAuthCookieValue } from "../../utils/pb.ts";
+import pb from "../../utils/pb.ts";
 
-/**
- * POST /api/login
- * Body JSON: { "email": "ou-username", "password": "..." }
- * - "email" peut être un email OU un username (PocketBase accepte les deux)
- */
+const AUTH_COLLECTION =
+  (import.meta.env.PUBLIC_PB_AUTH_COLLECTION ?? "").trim() || "users";
+
+const json = (body, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+
 export async function POST({ request, cookies }) {
   try {
     const data = await request.json().catch(() => null);
     const { email, identifier, password } = data || {};
     const idOrEmail = identifier ?? email;
+    if (!idOrEmail || !password) return json({ error: "Missing credentials" }, 400);
 
-    if (!idOrEmail || !password) {
-      return json({ error: "Missing credentials" }, 400);
-    }
+    // état propre et pas d’annulation auto
+    pb.authStore.clear();
+    pb.autoCancellation(false);
 
-    // Auth sur la collection d’auth "users"
-    await pb.collection("users").authWithPassword(idOrEmail, password);
+    // 👉 collection d'auth correcte (users)
+    await pb.collection(AUTH_COLLECTION).authWithPassword(idOrEmail, password);
 
-    // Dépose le cookie pb_auth (valeur uniquement)
-    const value = exportAuthCookieValue();
-    if (!value) {
-      return json({ error: "Auth cookie error" }, 500);
-    }
+    // cookie pb_auth
+    const header = pb.authStore.exportToCookie({
+      httpOnly: true,
+      secure: import.meta.env.PROD,
+      sameSite: "Lax",
+      path: "/",
+    });
+    const m = header.match(/pb_auth=([^;]+)/);
+    const value = m?.[1] || "";
+    if (!value) return json({ error: "Auth cookie error" }, 500);
 
     cookies.set("pb_auth", value, {
       httpOnly: true,
-      sameSite: "strict",
-      path: "/",
       secure: import.meta.env.PROD,
+      sameSite: "Lax",
+      path: "/",
     });
 
     const user = pb.authStore.model ?? pb.authStore.record ?? null;
     return json({ user }, 200);
   } catch (err) {
-    const message =
-      err?.data?.message || err?.message || "Invalid credentials";
-    return json({ error: message }, 401);
+    return json(
+      { error: err?.data?.message || err?.message || "Failed to authenticate." },
+      401
+    );
   }
-}
-
-// Petit helper de réponse JSON
-function json(body, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
 }
