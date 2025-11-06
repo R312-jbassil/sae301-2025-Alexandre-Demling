@@ -1,0 +1,5 @@
+- login pocketbase: 
+mot de passe : alexandredemlingg
+identifiant : Platinium.28
+- URL:https://sae301.alexandre-demling.fr
+- Lien github : https://github.com/R312-jbassil/sae301-2025-Alexandre-Demling
