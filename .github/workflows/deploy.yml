@@ -2,7 +2,7 @@ name: Build and Deploy to VPS
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   build-and-deploy:
@@ -15,16 +15,16 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18'   # ou '20' si tu préfères
+        node-version: '18'
         cache: 'npm'
 
     - name: Install dependencies
       run: npm ci
 
-    - name: Build project (Astro SSR - adapter node standalone)
+    - name: Build project
       run: |
         npm run build
-        # On dépose les métadonnées utiles près d'entry.mjs (même si on ne les utilisera plus côté VPS)
+        # déposer les métadonnées pour installer les deps côté VPS (runtime)
         cp package.json dist/server/
         cp package-lock.json dist/server/ || true
 
@@ -38,33 +38,43 @@ jobs:
         source: "dist/*"
         target: "/var/www/sae301/"
         strip_components: 1
-        rm: false
+        rm: true
         overwrite: true
         debug: true
 
-    - name: Restart PM2 on VPS (no npm install needed)
+    - name: Install production dependencies on VPS & restart PM2
       uses: appleboy/ssh-action@v1.0.0
       with:
         host: ${{ secrets.HOST }}
         username: ${{ secrets.USER }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         port: 22019
-        timeout: 30m
-        command_timeout: 60m
         script: |
-          # S'assurer que pm2 est présent
+          # PM2 présent ?
           if ! command -v pm2 >/dev/null 2>&1; then
             sudo npm i -g pm2
           fi
 
           cd /var/www/sae301/server
 
-          # (Re)démarrer l'app SSR (build standalone)
-          if pm2 describe sae301 >/dev/null 2>&1; then
-            PORT=8095 pm2 restart sae301
+          # Installer les dépendances runtime (dev exclus)
+          if [ -f package.json ] && [ -f package-lock.json ]; then
+            npm ci --omit=dev
           else
-            PORT=8095 pm2 start entry.mjs --name sae301
+            echo "⚠️  package.json/lock absents dans server/ — vérifier la copie depuis dist/"
+          fi
+
+          # (Re)démarrer l'app SSR
+          if pm2 describe sae301 >/dev/null 2>&1; then
+            PORT=8095 NODE_ENV=production pm2 restart sae301 --update-env
+          else
+            PORT=8095 NODE_ENV=production pm2 start entry.mjs --name sae301 --update-env
           fi
 
           pm2 save
+
+          # Diag rapide
           pm2 status
+          pm2 logs sae301 --lines 50 || true
+          ss -ltnp | grep 8095 || true
+          curl -I http://127.0.0.1:8095/ || true
